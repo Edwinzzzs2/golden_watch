@@ -1,0 +1,15 @@
+version: '3.8'
+
+services:
+  # Next.js 服务
+  golden-next:
+    image: golden-next:latest  # 使用你的镜像
+    restart: always  # 容器崩溃时自动重启
+    ports:
+      - "3701:3000"  # 将宿主机3701端口映射到容器的3000端口
+    environment:
+      - POSTGRES_HOST=192.168.1.12  # 数据库的 IP 地址（1Panel 提供的数据库）
+      - POSTGRES_PORT=5432  # PostgreSQL 的默认端口
+      - POSTGRES_USER=golden  # 数据库用户名
+      - POSTGRES_PASSWORD=11111  # 数据库密码
+      - POSTGRES_DB=golden  # 数据库名称
