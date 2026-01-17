@@ -19,6 +19,8 @@
 - Playwright 爬虫抓取网页金价
 
 ---
+## 如图
+<img width="863" height="1217" alt="image" src="https://github.com/user-attachments/assets/8e9cec32-3c39-46d4-ac31-f423a937f3f8" />
 
 ## 本地开发
 
