@@ -84,12 +84,49 @@ export default function GoldDemoPage() {
   // Fetch History
   const { 
     data: historyData, 
-    isLoading: isHistoryLoading 
+    isLoading: isHistoryLoading,
+    mutate: mutateHistory
   } = useSWR<GoldHistoryResponse>(`/api/gold-history?days=${selectedRange}`, fetcher);
 
-  const handleRefresh = () => {
-    mutatePrice();
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    // Minimum loading time to ensure animation visibility
+    const minLoading = new Promise(resolve => setTimeout(resolve, 800));
+    await Promise.all([
+      mutatePrice(),
+      mutateHistory(),
+      minLoading
+    ]);
+    setIsRefreshing(false);
   };
+
+  // Pull to refresh logic
+  useEffect(() => {
+    let startY = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        startY = e.touches[0].clientY;
+      }
+    };
+
+    const handleTouchEnd = async (e: TouchEvent) => {
+      if (window.scrollY === 0) {
+        const endY = e.changedTouches[0].clientY;
+        if (endY - startY > 150) { // Drag distance threshold
+           await handleRefresh();
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart);
+    window.addEventListener('touchend', handleTouchEnd);
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [selectedRange]);
 
   const chartData = useMemo(() => {
     if (!historyData?.data) return [];
@@ -266,8 +303,8 @@ export default function GoldDemoPage() {
                 </div>
               </CardHeader>
               <CardBody className="py-3 px-3 md:py-4 md:px-4">
-                {stats ? (
-                  <div className="grid grid-cols-3 gap-2 md:gap-4">
+                {stats && !isRefreshing ? (
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4">
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
                       <p className="text-xs text-gray-500 mb-1">最高价</p>
                       <p className="text-lg font-semibold text-green-600 leading-tight">{stats.max.toFixed(2)}</p>
@@ -275,6 +312,10 @@ export default function GoldDemoPage() {
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
                       <p className="text-xs text-gray-500 mb-1">最低价</p>
                       <p className="text-lg font-semibold text-red-600 leading-tight">{stats.min.toFixed(2)}</p>
+                    </div>
+                    <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
+                      <p className="text-xs text-gray-500 mb-1">平均价</p>
+                      <p className="text-lg font-semibold text-blue-600 leading-tight">{stats.avg.toFixed(2)}</p>
                     </div>
                     <div className="p-3 bg-gray-50 dark:bg-gray-800 rounded-lg flex flex-col items-center justify-center">
                       <p className="text-xs text-gray-500 mb-1">涨跌幅</p>
@@ -305,7 +346,7 @@ export default function GoldDemoPage() {
                 </div>
               </CardHeader>
               <CardBody className="px-2 pb-4">
-                {isHistoryLoading ? (
+                {isHistoryLoading || isRefreshing ? (
                   <div className="h-full flex items-center justify-center">
                     <Spinner label="加载历史数据..." color="primary" />
                   </div>
@@ -368,7 +409,12 @@ export default function GoldDemoPage() {
       </div>
 
       {/* Settings Modal */}
-      <Modal isOpen={isOpen} onOpenChange={onOpenChange}>
+      <Modal 
+        isOpen={isOpen} 
+        onOpenChange={onOpenChange}
+        scrollBehavior="inside"
+        placement="top-center"
+      >
         <ModalContent>
           {(onClose) => (
             <>
@@ -379,7 +425,7 @@ export default function GoldDemoPage() {
                     <Spinner label="加载设置..." />
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-4 pb-12">
                     <div>
                       <p className="text-small font-bold text-gray-500 mb-2">爬虫设置</p>
                       <Input
